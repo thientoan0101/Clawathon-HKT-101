@@ -1,0 +1,728 @@
+{
+  "version": "1.1",
+  "actions": [
+    {"action": "precomputed", "description": "Global metric pre-calculated at startup. Set stat_key to function id."},
+    {"action": "sender_tool", "description": "Metric for one sender_id (10-20 digit number). Set tool_name and sender_id."},
+    {"action": "tool", "description": "Compute from raw data. Set tool_name and parameters."},
+    {"action": "executive", "description": "Full dashboard summary of key metrics."},
+    {"action": "clarify", "description": "Question is ambiguous; ask user to clarify."},
+    {"action": "agent", "description": "Complex multi-step question needing multiple tools."}
+  ],
+  "functions": [
+    {
+      "id": "transfer.tpv",
+      "action": "precomputed",
+      "category": "volume",
+      "description": "Total payment volume (sum of all transfer amounts) across the dataset.",
+      "parameters": [],
+      "examples": ["total volume", "TPV", "tổng giá trị giao dịch"],
+      "keywords_en": ["tpv", "total volume", "total payment volume", "total amount"],
+      "keywords_vi": ["tổng giá trị", "tổng số tiền", "tổng volume"],
+      "returns": "number (VND)"
+    },
+    {
+      "id": "transfer.transfer_count",
+      "action": "precomputed",
+      "category": "volume",
+      "description": "Total number of transfer transactions in the dataset.",
+      "parameters": [],
+      "examples": ["how many transfers", "total transactions", "number of transactions"],
+      "keywords_en": ["transfer count", "transaction count", "number of transaction"],
+      "keywords_vi": ["bao nhiêu giao dịch", "số giao dịch"],
+      "returns": "integer count"
+    },
+    {
+      "id": "transfer.average_transfer_value",
+      "action": "precomputed",
+      "category": "volume",
+      "description": "Average transfer amount (TPV divided by transfer count).",
+      "parameters": [],
+      "examples": ["average transfer value", "mean amount", "avg transfer"],
+      "keywords_en": ["average", "avg", "mean amount"],
+      "keywords_vi": ["trung bình", "giá trị trung bình"],
+      "returns": "number (VND)"
+    },
+    {
+      "id": "global.unique_senders",
+      "action": "precomputed",
+      "category": "users",
+      "description": "Count of distinct sender_id who initiated at least one transfer.",
+      "parameters": [],
+      "examples": ["unique senders", "total unique sender", "how many senders"],
+      "keywords_en": ["unique sender", "number of sender", "distinct sender", "active sender"],
+      "keywords_vi": ["người gửi", "bao nhiêu người gửi"],
+      "returns": "integer count"
+    },
+    {
+      "id": "global.unique_peers",
+      "action": "precomputed",
+      "category": "users",
+      "description": "Count of distinct peer_id (recipients/receivers) who received at least one transfer.",
+      "parameters": [],
+      "examples": ["unique peers", "number of receiver", "how many recipients"],
+      "keywords_en": ["unique peer", "receiver", "recipient", "number of receiver"],
+      "keywords_vi": ["người nhận", "bao nhiêu người nhận"],
+      "returns": "integer count"
+    },
+    {
+      "id": "global.mean_amount",
+      "action": "precomputed",
+      "category": "volume",
+      "description": "Mean transfer amount across all transactions.",
+      "parameters": [],
+      "examples": ["mean amount"],
+      "keywords_en": ["mean amount"],
+      "keywords_vi": ["trung bình"],
+      "returns": "number (VND)"
+    },
+    {
+      "id": "global.median_amount",
+      "action": "precomputed",
+      "category": "volume",
+      "description": "Median transfer amount across all transactions.",
+      "parameters": [],
+      "examples": ["median amount", "median transfer"],
+      "keywords_en": ["median"],
+      "keywords_vi": ["trung vị"],
+      "returns": "number (VND)"
+    },
+    {
+      "id": "activity.active_senders",
+      "action": "precomputed",
+      "category": "activity",
+      "description": "Total active senders (same as unique senders).",
+      "parameters": [],
+      "examples": ["active senders"],
+      "keywords_en": ["active sender"],
+      "keywords_vi": ["người gửi hoạt động"],
+      "returns": "integer count"
+    },
+    {
+      "id": "activity.active_recipients",
+      "action": "precomputed",
+      "category": "activity",
+      "description": "Total active recipients (same as unique peers).",
+      "parameters": [],
+      "examples": ["active recipients"],
+      "keywords_en": ["active recipient"],
+      "keywords_vi": ["người nhận hoạt động"],
+      "returns": "integer count"
+    },
+    {
+      "id": "activity.transactions_per_active_user",
+      "action": "precomputed",
+      "category": "activity",
+      "description": "Average transactions per active sender.",
+      "parameters": [],
+      "examples": ["transactions per user", "txn per active user"],
+      "keywords_en": ["transaction per active", "txn per user"],
+      "keywords_vi": ["giao dịch trên người dùng"],
+      "returns": "number"
+    },
+    {
+      "id": "growth.new_users_total",
+      "action": "precomputed",
+      "category": "growth",
+      "description": "Total first-time senders in the dataset.",
+      "parameters": [],
+      "examples": ["new users", "how many new users"],
+      "keywords_en": ["new user"],
+      "keywords_vi": ["người dùng mới"],
+      "returns": "integer count"
+    },
+    {
+      "id": "growth.user_growth_rate_pct",
+      "action": "precomputed",
+      "category": "growth",
+      "description": "Month-over-month active user growth rate (%).",
+      "parameters": [],
+      "examples": ["user growth rate"],
+      "keywords_en": ["growth rate", "user growth"],
+      "keywords_vi": ["tăng trưởng người dùng"],
+      "returns": "percentage"
+    },
+    {
+      "id": "transfer.success_rate_pct",
+      "action": "precomputed",
+      "category": "volume",
+      "description": "Transfer success rate (%).",
+      "parameters": [],
+      "examples": ["success rate"],
+      "keywords_en": ["success rate"],
+      "keywords_vi": ["tỷ lệ thành công"],
+      "returns": "percentage"
+    },
+    {
+      "id": "activity.latest_dau",
+      "action": "precomputed",
+      "category": "activity",
+      "description": "Daily active users: unique senders on the latest day in the dataset.",
+      "parameters": [],
+      "examples": ["DAU", "daily active users"],
+      "keywords_en": ["dau", "daily active"],
+      "keywords_vi": ["người dùng hoạt động ngày"],
+      "returns": "integer count"
+    },
+    {
+      "id": "activity.latest_wau",
+      "action": "precomputed",
+      "category": "activity",
+      "description": "Weekly active users on the latest week in the dataset.",
+      "parameters": [],
+      "examples": ["WAU", "weekly active users"],
+      "keywords_en": ["wau", "weekly active"],
+      "keywords_vi": ["hoạt động tuần"],
+      "returns": "integer count"
+    },
+    {
+      "id": "activity.latest_mau",
+      "action": "precomputed",
+      "category": "activity",
+      "description": "Monthly active users on the latest month in the dataset.",
+      "parameters": [],
+      "examples": ["MAU", "monthly active users"],
+      "keywords_en": ["mau", "monthly active"],
+      "keywords_vi": ["hoạt động tháng"],
+      "returns": "integer count"
+    },
+    {
+      "id": "activity.dau_mau_ratio_pct",
+      "action": "precomputed",
+      "category": "activity",
+      "description": "DAU/MAU stickiness ratio as a percentage.",
+      "parameters": [],
+      "examples": ["DAU/MAU", "stickiness ratio"],
+      "keywords_en": ["dau/mau", "stickiness"],
+      "keywords_vi": ["tỷ lệ dau mau"],
+      "returns": "percentage"
+    },
+    {
+      "id": "retention.r7_transfer_retention_pct",
+      "action": "precomputed",
+      "category": "retention",
+      "description": "R7 transfer retention: percent of senders who made a 2nd transfer within 7 days of first.",
+      "parameters": [],
+      "examples": ["R7 retention", "retention 7 days"],
+      "keywords_en": ["r7", "r7 retention"],
+      "keywords_vi": ["giữ chân 7 ngày"],
+      "returns": "percentage"
+    },
+    {
+      "id": "retention.r30_transfer_retention_pct",
+      "action": "precomputed",
+      "category": "retention",
+      "description": "R30 transfer retention: percent of senders who made a 2nd transfer within 30 days of first.",
+      "parameters": [],
+      "examples": ["R30 retention", "retention 30 days"],
+      "keywords_en": ["r30", "r30 retention"],
+      "keywords_vi": ["giữ chân 30 ngày"],
+      "returns": "percentage"
+    },
+    {
+      "id": "retention.d1_retention_pct",
+      "action": "precomputed",
+      "category": "retention",
+      "description": "D1 retention: percent returning the day after first transfer.",
+      "parameters": [],
+      "examples": ["D1 retention"],
+      "keywords_en": ["d1 retention"],
+      "keywords_vi": ["d1"],
+      "returns": "percentage"
+    },
+    {
+      "id": "retention.d7_retention_pct",
+      "action": "precomputed",
+      "category": "retention",
+      "description": "D7 retention: percent returning 7 days after first transfer.",
+      "parameters": [],
+      "examples": ["D7 retention"],
+      "keywords_en": ["d7 retention"],
+      "keywords_vi": ["d7"],
+      "returns": "percentage"
+    },
+    {
+      "id": "retention.d30_retention_pct",
+      "action": "precomputed",
+      "category": "retention",
+      "description": "D30 retention: percent returning 30 days after first transfer.",
+      "parameters": [],
+      "examples": ["D30 retention"],
+      "keywords_en": ["d30 retention"],
+      "keywords_vi": ["d30"],
+      "returns": "percentage"
+    },
+    {
+      "id": "retention.churn_rate_pct",
+      "action": "precomputed",
+      "category": "retention",
+      "description": "Churn rate: percent of users active last month but not this month.",
+      "parameters": [],
+      "examples": ["churn rate", "churn"],
+      "keywords_en": ["churn"],
+      "keywords_vi": ["rời bỏ", "churn"],
+      "returns": "percentage"
+    },
+    {
+      "id": "retention.repeat_sender_rate_pct",
+      "action": "precomputed",
+      "category": "retention",
+      "description": "Percent of senders who made more than one transfer.",
+      "parameters": [],
+      "examples": ["repeat sender rate"],
+      "keywords_en": ["repeat sender"],
+      "keywords_vi": ["gửi lại"],
+      "returns": "percentage"
+    },
+    {
+      "id": "network.senders_with_more_than_3_peers",
+      "action": "precomputed",
+      "category": "network",
+      "description": "Count of senders who transferred to more than 3 distinct peers (all-time).",
+      "parameters": [],
+      "examples": ["senders with more than 3 peers"],
+      "keywords_en": ["more than 3 peer", "more than 3 receiver"],
+      "keywords_vi": ["hơn 3 người nhận"],
+      "returns": "integer count"
+    },
+    {
+      "id": "get_executive_dashboard_summary",
+      "action": "executive",
+      "category": "dashboard",
+      "description": "Full executive summary: TPV, transfer count, unique senders, DAU, MAU, retention, avg value.",
+      "parameters": [],
+      "examples": ["dashboard summary", "executive overview", "tổng quan"],
+      "keywords_en": ["dashboard", "overview", "summary", "executive"],
+      "keywords_vi": ["tổng quan", "báo cáo tổng"],
+      "returns": "object with multiple metrics"
+    },
+    {
+      "id": "get_user_txn_count",
+      "action": "sender_tool",
+      "category": "user_lookup",
+      "description": "Transaction count for a specific sender_id.",
+      "parameters": [{"name": "sender_id", "type": "string", "required": true, "description": "10-20 digit sender ID"}],
+      "examples": ["how many transactions did user 160516000000516 make"],
+      "keywords_en": ["transaction count", "txn count", "how many transaction"],
+      "keywords_vi": ["bao nhiêu giao dịch của user"],
+      "returns": "integer txn_count"
+    },
+    {
+      "id": "get_user_total_volume",
+      "action": "sender_tool",
+      "category": "user_lookup",
+      "description": "Total transfer volume for a specific sender_id.",
+      "parameters": [{"name": "sender_id", "type": "string", "required": true, "description": "10-20 digit sender ID"}],
+      "examples": ["total volume of user 160516000000516"],
+      "keywords_en": ["volume of user", "total amount of sender"],
+      "keywords_vi": ["tổng tiền của user"],
+      "returns": "number (VND)"
+    },
+    {
+      "id": "get_user_unique_peers",
+      "action": "sender_tool",
+      "category": "user_lookup",
+      "description": "Number of distinct recipients (peer_id) a sender transferred to.",
+      "parameters": [{"name": "sender_id", "type": "string", "required": true, "description": "10-20 digit sender ID"}],
+      "examples": ["how many receivers did user 160516000000516 send to"],
+      "keywords_en": ["unique peer", "receivers of user"],
+      "keywords_vi": ["người nhận của user"],
+      "returns": "integer unique_peers"
+    },
+    {
+      "id": "get_user_avg_amount",
+      "action": "sender_tool",
+      "category": "user_lookup",
+      "description": "Average transfer amount for a specific sender_id.",
+      "parameters": [{"name": "sender_id", "type": "string", "required": true, "description": "10-20 digit sender ID"}],
+      "examples": ["average amount for user 160516000000516"],
+      "keywords_en": ["average amount", "avg amount"],
+      "keywords_vi": ["trung bình của user"],
+      "returns": "number (VND)"
+    },
+    {
+      "id": "list_senders_with_more_than_receivers",
+      "action": "tool",
+      "category": "network",
+      "description": "LIST sender_id values where user sent to MORE than N distinct receivers. Returns IDs, not just count.",
+      "parameters": [{"name": "more_than", "type": "integer", "required": true, "description": "Strict threshold; 'more than 2 receivers' → more_than=2"}],
+      "examples": ["sender id of users who have more than 2 receivers", "which senders have more than 5 peers"],
+      "keywords_en": ["list sender", "sender id", "which users", "more than N receiver"],
+      "keywords_vi": ["danh sách sender", "ai gửi cho hơn"],
+      "returns": "list of sender_id with receiver_count"
+    },
+    {
+      "id": "get_senders_with_min_peers",
+      "action": "tool",
+      "category": "network",
+      "description": "COUNT senders with at least N distinct peers (inclusive). Count only, no sender IDs.",
+      "parameters": [{"name": "min_peers", "type": "integer", "required": true, "description": "Minimum distinct peer count"}],
+      "examples": ["how many senders have at least 5 receivers"],
+      "keywords_en": ["count senders", "how many senders with"],
+      "keywords_vi": ["bao nhiêu người gửi cho"],
+      "returns": "integer sender_count"
+    },
+    {
+      "id": "get_top_senders_by_count",
+      "action": "tool",
+      "category": "ranking",
+      "description": "Top senders ranked by transaction count.",
+      "parameters": [{"name": "limit", "type": "integer", "required": false, "description": "Number of results, default 10"}],
+      "examples": ["top 10 senders by transaction count"],
+      "keywords_en": ["top sender", "rank sender"],
+      "keywords_vi": ["top người gửi"],
+      "returns": "list of {sender_id, txn_count}"
+    },
+    {
+      "id": "get_top_senders_by_volume",
+      "action": "tool",
+      "category": "ranking",
+      "description": "Top senders ranked by total transfer volume.",
+      "parameters": [{"name": "limit", "type": "integer", "required": false, "description": "Number of results, default 10"}],
+      "examples": ["top 10 senders by volume"],
+      "keywords_en": ["top sender by volume"],
+      "keywords_vi": ["top volume"],
+      "returns": "list of {sender_id, volume}"
+    },
+    {
+      "id": "get_top_peers_by_count",
+      "action": "tool",
+      "category": "ranking",
+      "description": "Top recipients (peer_id) ranked by transaction count.",
+      "parameters": [{"name": "limit", "type": "integer", "required": false, "description": "Number of results, default 10"}],
+      "examples": [
+        "the recipient who received the most transfer",
+        "top 10 receivers by count",
+        "who received the most transactions"
+      ],
+      "keywords_en": [
+        "top peer",
+        "top recipient",
+        "most transfer",
+        "received the most",
+        "highest recipient"
+      ],
+      "keywords_vi": ["top người nhận"],
+      "returns": "list of {peer_id, txn_count}"
+    },
+    {
+      "id": "list_transactions_in_last_days",
+      "action": "tool",
+      "category": "listing",
+      "description": "LIST individual transfer transactions in a time window. Not a count — returns order_no, sender_id, peer_id, amount, date.",
+      "parameters": [
+        {"name": "days", "type": "integer", "required": true, "description": "Number of days; with single_day=false = last N days rolling window"},
+        {"name": "limit", "type": "integer", "required": false, "description": "Max rows to return, default 50"},
+        {"name": "single_day", "type": "boolean", "required": false, "description": "true = only the calendar day N days before latest txn; false = last N days"}
+      ],
+      "examples": [
+        "list transactions in last 7 days",
+        "list transaction in 7 days ago",
+        "show transfers in the past 14 days"
+      ],
+      "keywords_en": [
+        "list transaction",
+        "list transfer",
+        "show transaction",
+        "transactions in",
+        "days ago",
+        "last N days",
+        "past days"
+      ],
+      "keywords_vi": [
+        "danh sách giao dịch",
+        "liệt kê giao dịch",
+        "giao dịch trong",
+        "ngày trước"
+      ],
+      "returns": "list of transaction records with total_count"
+    },
+    {
+      "id": "segment_rule1_senders_more_than_txns",
+      "action": "tool",
+      "category": "segment_rule",
+      "description": "Rule 1: COUNT senders with MORE than N transactions in a rolling time window.",
+      "parameters": [
+        {"name": "days", "type": "integer", "required": true, "description": "Window size: 7, 14, or 30"},
+        {"name": "more_than", "type": "integer", "required": true, "description": "Transaction count threshold (strictly greater)"}
+      ],
+      "examples": ["Trong 7 ngày, có bao nhiêu người có hơn 5 giao dịch", "in 14 days how many users have more than 10 transactions"],
+      "keywords_en": ["more than N transaction", "high frequency"],
+      "keywords_vi": ["hơn n giao dịch", "nhiều hơn n giao dịch"],
+      "returns": "integer sender_count"
+    },
+    {
+      "id": "segment_rule2_senders_exactly_txns",
+      "action": "tool",
+      "category": "segment_rule",
+      "description": "Rule 2: COUNT senders with EXACTLY N transactions in a rolling time window.",
+      "parameters": [
+        {"name": "days", "type": "integer", "required": true, "description": "Window size: 7, 14, or 30"},
+        {"name": "exactly", "type": "integer", "required": true, "description": "Exact transaction count"}
+      ],
+      "examples": ["Trong 7 ngày có bao nhiêu người có đúng 1 giao dịch"],
+      "keywords_en": ["exactly N transaction"],
+      "keywords_vi": ["đúng n giao dịch"],
+      "returns": "integer sender_count"
+    },
+    {
+      "id": "segment_rule3_senders_min_active_days",
+      "action": "tool",
+      "category": "segment_rule",
+      "description": "Rule 3: COUNT senders active on at least D distinct dates in a rolling window.",
+      "parameters": [
+        {"name": "days", "type": "integer", "required": true, "description": "Window size"},
+        {"name": "min_days", "type": "integer", "required": true, "description": "Minimum distinct active days"}
+      ],
+      "examples": ["in 7 days how many users transacted on at least 3 different days"],
+      "keywords_en": ["active days", "distinct days"],
+      "keywords_vi": ["ít nhất d ngày", "nhiều ngày khác nhau"],
+      "returns": "integer sender_count"
+    },
+    {
+      "id": "segment_rule4_senders_total_amount_above",
+      "action": "tool",
+      "category": "segment_rule",
+      "description": "Rule 4: COUNT senders whose total amount exceeds threshold X (VND) in window.",
+      "parameters": [
+        {"name": "days", "type": "integer", "required": true, "description": "Window size"},
+        {"name": "min_amount", "type": "number", "required": true, "description": "Amount threshold in VND; '1 triệu' → 1000000"}
+      ],
+      "examples": ["Trong 30 ngày có bao nhiêu người có tổng amount lớn hơn 1 triệu"],
+      "keywords_en": ["total amount above", "volume greater than"],
+      "keywords_vi": ["tổng amount lớn hơn", "tổng tiền hơn"],
+      "returns": "integer sender_count"
+    },
+    {
+      "id": "segment_rule5_senders_avg_amount_above",
+      "action": "tool",
+      "category": "segment_rule",
+      "description": "Rule 5: COUNT senders with average amount above X and at least min_txns in window.",
+      "parameters": [
+        {"name": "days", "type": "integer", "required": true, "description": "Window size"},
+        {"name": "min_avg", "type": "number", "required": true, "description": "Average amount threshold (VND)"},
+        {"name": "min_txns", "type": "integer", "required": false, "description": "Minimum transactions, default 1"}
+      ],
+      "examples": ["users with at least 3 txns and average above 500000"],
+      "keywords_en": ["average amount above", "ticket size"],
+      "keywords_vi": ["trung bình lớn hơn"],
+      "returns": "integer sender_count"
+    },
+    {
+      "id": "segment_rule6_sender_peer_pairs_more_than_txns",
+      "action": "tool",
+      "category": "segment_rule",
+      "description": "Rule 6: COUNT (sender_id, peer_id) pairs with more than N transactions between them.",
+      "parameters": [
+        {"name": "days", "type": "integer", "required": true, "description": "Window size"},
+        {"name": "more_than", "type": "integer", "required": true, "description": "Pair transaction threshold"}
+      ],
+      "examples": ["how many sender-peer pairs have more than 3 transactions in 7 days"],
+      "keywords_en": ["sender peer pair", "pair transaction"],
+      "keywords_vi": ["cặp sender peer", "cặp giao dịch"],
+      "returns": "integer pair_count"
+    },
+    {
+      "id": "segment_rule7_senders_more_than_peers",
+      "action": "tool",
+      "category": "segment_rule",
+      "description": "Rule 7: COUNT senders who sent to MORE than P unique peer_id in window.",
+      "parameters": [
+        {"name": "days", "type": "integer", "required": true, "description": "Window size"},
+        {"name": "more_than", "type": "integer", "required": true, "description": "Unique peer threshold"}
+      ],
+      "examples": ["in 30 days how many senders sent to more than 5 different receivers"],
+      "keywords_en": ["more than P peer", "many receivers"],
+      "keywords_vi": ["gửi cho hơn p người", "nhiều người nhận"],
+      "returns": "integer sender_count"
+    },
+    {
+      "id": "segment_rule8_peers_more_than_senders",
+      "action": "tool",
+      "category": "segment_rule",
+      "description": "Rule 8: COUNT peers who received from MORE than P unique sender_id in window.",
+      "parameters": [
+        {"name": "days", "type": "integer", "required": true, "description": "Window size"},
+        {"name": "more_than", "type": "integer", "required": true, "description": "Unique sender threshold"}
+      ],
+      "examples": ["peers who received from more than 5 different senders"],
+      "keywords_en": ["peer more than sender", "many senders to peer"],
+      "keywords_vi": ["nhận từ hơn p người gửi"],
+      "returns": "integer peer_count"
+    },
+    {
+      "id": "segment_rule9_senders_more_than_products",
+      "action": "tool",
+      "category": "segment_rule",
+      "description": "Rule 9: COUNT senders using MORE than K distinct product_code in window.",
+      "parameters": [
+        {"name": "days", "type": "integer", "required": true, "description": "Window size"},
+        {"name": "more_than", "type": "integer", "required": true, "description": "Product code threshold"}
+      ],
+      "examples": ["users with more than 2 product codes in 30 days"],
+      "keywords_en": ["product code", "multiple products"],
+      "keywords_vi": ["nhiều product_code", "loại sản phẩm"],
+      "returns": "integer sender_count"
+    },
+    {
+      "id": "segment_rule10_bidirectional_pairs",
+      "action": "tool",
+      "category": "segment_rule",
+      "description": "Rule 10: COUNT bidirectional pairs where A sent to B AND B sent to A in same window.",
+      "parameters": [{"name": "days", "type": "integer", "required": true, "description": "Window size"}],
+      "examples": ["how many bidirectional transaction pairs in 30 days"],
+      "keywords_en": ["bidirectional", "two-way", "mutual"],
+      "keywords_vi": ["hai chiều", "giao dịch qua lại"],
+      "returns": "integer pair_count"
+    },
+    {
+      "id": "cohort.retention_matrix",
+      "action": "tool",
+      "category": "retention",
+      "description": "Returns a MoM or WoW classic cohort retention matrix based on user sign-up/first-transfer date to track long-term product stickiness.",
+      "parameters": [
+        {"name": "cohort_period", "type": "string", "required": true, "description": "Grouping interval: 'week' or 'month'"},
+        {"name": "size", "type": "integer", "required": false, "description": "Number of trailing cohorts to fetch, default 12"}
+      ],
+      "examples": ["Show me the monthly cohort retention matrix", "bảng qua các tháng giữ chân cơ bản"],
+      "keywords_en": ["cohort matrix", "retention table", "cohort analysis"],
+      "keywords_vi": ["bảng cohort", "giữ chân theo cohort", "ma trận giữ chân"],
+      "returns": "array of objects {cohort_date, total_users, active_in_period_n[]}"
+    },
+    {
+      "id": "marketing.cac_and_ltv",
+      "action": "tool",
+      "category": "marketing_roi",
+      "description": "Calculates Estimated Customer Lifetime Value (LTV) and overlays it with Customer Acquisition Cost (CAC) input to output ROI and payback periods.",
+      "parameters": [
+        {"name": "blended_cac", "type": "number", "required": true, "description": "Average cost to acquire one active user in VND"},
+        {"name": "months_horizon", "type": "integer", "required": false, "description": "LTV calculation window length in months, default 12"}
+      ],
+      "examples": ["Calculate LTV and ROI given a CAC of 50000 VND", "LTV và ROI với chi phí CAC"],
+      "keywords_en": ["cac", "ltv", "clv", "roi", "payback period"],
+      "keywords_vi": ["giá trị vòng đời", "chi phí tìm kiếm khách hàng", "hoàn vốn"],
+      "returns": "object {estimated_ltv, ltv_cac_ratio, payback_months}"
+    },
+    {
+      "id": "segmentation.rfm_scores",
+      "action": "tool",
+      "category": "behavioral",
+      "description": "Segments the entire user base using Recency, Frequency, and Monetary parameters into standard marketing personas (Champions, Loyal, Hibernating, At Risk).",
+      "parameters": [],
+      "examples": ["Show me the RFM user breakdown", "Phân khúc khách hàng RFM"],
+      "keywords_en": ["rfm", "user profiling", "champions", "at risk users", "loyal customers"],
+      "keywords_vi": ["phân khúc rfm", "khách hàng trung thành", "khách hàng rời bỏ"],
+      "returns": "list of objects {segment_name, user_count, percentage_of_total, avg_monetary_value}"
+    },
+    {
+      "id": "breakdown.channel_and_platform",
+      "action": "precomputed",
+      "category": "product_insights",
+      "description": "Provides a breakdown of TPV and transaction count across client platforms (iOS, Android, Web) and product rails (Fast Transfer 24/7, Regular Bank Transfer, Internal Wallet Transfer).",
+      "parameters": [],
+      "examples": ["Which platform has higher volume iOS or Android?", "Tỷ lệ volume qua 247 và chuyển tiền thường"],
+      "keywords_en": ["ios vs android", "channel breakdown", "product rails", "247 transfer", "wallet volume"],
+      "keywords_vi": ["kênh giao dịch", "hệ điều hành", "chuyển tiền nhanh 247"],
+      "returns": "object containing nested volume and count distributions"
+    },
+    {
+      "id": "risk.velocity_alerts",
+      "action": "tool",
+      "category": "risk_fraud",
+      "description": "Identifies potential smurfing, fraud, or system abuse by listing senders with extreme velocity indicators (e.g., more than N transfers within short minute windows).",
+      "parameters": [
+        {"name": "time_window_minutes", "type": "integer", "required": true, "description": "Lookback window in minutes; e.g., 5, 15, 60"},
+        {"name": "min_txns", "type": "integer", "required": true, "description": "Minimum transaction limit flag threshold"}
+      ],
+      "examples": ["Find users making more than 5 transfers in 10 minutes", "Cảnh báo spam giao dịch nhanh"],
+      "keywords_en": ["velocity", "fraud check", "abuse", "smurfing", "rapid transactions"],
+      "keywords_vi": ["giao dịch bất thường", "tốc độ giao dịch", "dấu hiệu gian lận"],
+      "returns": "list of {sender_id, txn_count, total_amount, window_start_time}"
+    },
+    {
+      "id": "activity.hourly_peak_load",
+      "action": "tool",
+      "category": "operations",
+      "description": "Aggregates transactions by hour of the day and day of the week to show server capacity needs, peak traffic, and dead hours for planned maintenance.",
+      "parameters": [
+        {"name": "last_days", "type": "integer", "required": false, "description": "Lookback history window, default 30"}
+      ],
+      "examples": ["When are the peak hours for transfers?", "Khung giờ cao điểm hệ thống"],
+      "keywords_en": ["hourly load", "peak hours", "traffic pattern", "maintenance window"],
+      "keywords_vi": ["giờ cao điểm", "thời gian giao dịch nhiều nhất", "khung giờ"],
+      "returns": "list of {day_of_week, hour_of_day, avg_txn_count, avg_tpv}"
+    },
+    {
+      "id": "activity.time_of_day_breakdown",
+      "action": "precomputed",
+      "category": "operations",
+      "description": "Categorizes all transactions into macro day parts (Early Morning, Morning, Afternoon, Evening, Night) to find which period has the most transaction volume or count.",
+      "parameters": [],
+      "examples": [
+        "which time has the most transactions morning or night",
+        "thời điểm nào trong ngày được chuyển tiền nhiều nhất",
+        "giao dịch tập trung vào sáng hay đêm"
+      ],
+      "keywords_en": ["time of day", "morning vs night", "day part", "evening volume"],
+      "keywords_vi": ["sáng hay tối", "khung giờ trong ngày", "ban ngày", "ban đêm"],
+      "returns": "list of objects {time_bucket_name, hour_range, txn_count, percentage_of_count, total_tpv}"
+    },
+    {
+      "id": "activity.custom_hourly_buckets",
+      "action": "tool",
+      "category": "operations",
+      "description": "Groups transaction data into custom hourly bucket widths (e.g., 2-hour slots, 4-hour slots) across a lookback window to pinpoint hyper-specific structural traffic peaks.",
+      "parameters": [
+        {"name": "bucket_size_hours", "type": "integer", "required": true, "description": "Size of the time bucket slice: 1, 2, 3, 4, 6, or 12"},
+        {"name": "days", "type": "integer", "required": false, "description": "Lookback window size in days, default 30"}
+      ],
+      "examples": [
+        "bucket transactions into 2-hour intervals",
+        "chia dữ liệu giao dịch theo block 4 tiếng",
+        "thống kê số lượng giao dịch theo cụm giờ"
+      ],
+      "keywords_en": ["hourly bucket", "time interval blocks", "quantized time slots"],
+      "keywords_vi": ["khung giờ cố định", "chia cụm giờ", "bucket thời gian"],
+      "returns": "list of objects {bucket_label, txn_count, total_amount}"
+    },
+    {
+      "id": "activity.peak_minute_velocity",
+      "action": "tool",
+      "category": "predictive_analytics",
+      "description": "Identifies the single highest peak minute of historical transaction concurrency within a given date range. Critical for infrastructure stress-testing and capacity planning.",
+      "parameters": [
+        {"name": "days", "type": "integer", "required": false, "description": "Lookback window sizing, default 7"}
+      ],
+      "examples": [
+        "what was our absolute peak traffic minute",
+        "phút cao điểm kỷ lục gần đây là khi nào"
+      ],
+      "keywords_en": ["peak minute", "concurrency peak", "highest traffic spike"],
+      "keywords_vi": ["phút cao điểm", "giao dịch đồng thời", "lúc nghẽn mạng"],
+      "returns": "object {peak_timestamp, max_txns_per_minute, baseline_avg_minute}"
+    },
+    {
+      "id": "transfer.error_code_distribution",
+      "action": "tool",
+      "category": "operations",
+      "description": "Lists failing transactions categorized by error response codes (e.g., Insufficient Funds, System Timeout, Invalid Account Number) to assist POs in clearing friction points.",
+      "parameters": [
+        {"name": "days", "type": "integer", "required": false, "description": "Lookback window size, default 7"}
+      ],
+      "examples": ["Why are transactions failing this week?", "Lỗi giao dịch phổ biến nhất"],
+      "keywords_en": ["failure reasons", "error codes", "declines", "insufficient funds", "timeout"],
+      "keywords_vi": ["mã lỗi", "lý do thất bại", "giao dịch lỗi"],
+      "returns": "list of {error_code, error_description, failure_count, percentage_of_failures}"
+    },
+    {
+      "id": "growth.forecasting_next_month",
+      "action": "precomputed",
+      "category": "predictive_analytics",
+      "description": "Predicts next month's TPV and active user count based on exponential smoothing time-series models from current data.",
+      "parameters": [],
+      "examples": ["Predict next month TPV", "Dự báo tăng trưởng tháng sau"],
+      "keywords_en": ["forecast", "prediction", "predictive TPV", "future growth"],
+      "keywords_vi": ["dự báo", "tiên đoán doanh số", "tháng tới"],
+      "returns": "object {predicted_tpv, predicted_mau, confidence_interval_low, confidence_interval_high}"
+    }
+  ]
+}

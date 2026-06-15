@@ -1,0 +1,6 @@
+greennode-agentbase
+langchain>=1.2.0,<2.0.0
+langchain-openai>=1.1.0,<2.0.0
+pandas>=2.0.0,<3.0.0
+python-dotenv
+jinja2

@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Transfer Analytics Chat</title>
+  <style>
+    body { font-family: system-ui, sans-serif; max-width: 800px; margin: 2rem auto; padding: 0 1rem; }
+    #messages { border: 1px solid #d0d7de; border-radius: 8px; min-height: 360px; padding: 1rem; background: #fff; overflow-y: auto; }
+    .msg { margin-bottom: 0.75rem; }
+    .msg.user { color: #0969da; }
+    .msg.bot { color: #1f2328; }
+    .input-row { display: flex; gap: 0.5rem; margin-top: 1rem; }
+    input, button { font-size: 1rem; padding: 0.6rem; }
+    input { flex: 1; border: 1px solid #d0d7de; border-radius: 6px; }
+    button { background: #0969da; color: #fff; border: none; border-radius: 6px; cursor: pointer; }
+    a { color: #0969da; }
+  </style>
+</head>
+<body>
+  <p><a href="/">← Dashboard</a></p>
+  <h1>Transfer Analytics Chat</h1>
+  <div id="messages"></div>
+  <div class="input-row">
+    <input id="input" placeholder="Ask: total transactions of user 160516000000516" />
+    <button id="send">Send</button>
+  </div>
+  <script>
+    const sessionId = "{{ session_id }}";
+    const messages = document.getElementById("messages");
+    const input = document.getElementById("input");
+
+    function addMsg(role, text) {
+      const div = document.createElement("div");
+      div.className = "msg " + role;
+      div.textContent = (role === "user" ? "You: " : "Assistant: ") + text;
+      messages.appendChild(div);
+      messages.scrollTop = messages.scrollHeight;
+    }
+
+    async function send() {
+      const text = input.value.trim();
+      if (!text) return;
+      addMsg("user", text);
+      input.value = "";
+      addMsg("bot", "Thinking...");
+      const res = await fetch("/api/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ message: text, session_id: sessionId, channel: "web" })
+      });
+      const data = await res.json();
+      messages.lastChild.textContent = "Assistant: " + (data.reply || data.error || "No response");
+    }
+
+    document.getElementById("send").onclick = send;
+    input.addEventListener("keydown", e => { if (e.key === "Enter") send(); });
+  </script>
+</body>
+</html>
