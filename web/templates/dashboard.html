@@ -814,6 +814,82 @@
             transition: width 0.3s ease;
         }
 
+        /* ═══════════ MODAL ═══════════ */
+        .modal-overlay {
+            position: fixed;
+            inset: 0;
+            background-color: rgba(6, 9, 19, 0.8);
+            backdrop-filter: blur(8px);
+            z-index: 300;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            opacity: 1;
+            transition: opacity 0.3s ease;
+        }
+
+        .modal-overlay.hidden {
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        .modal-content {
+            background-color: var(--bg-surface);
+            border: 1px solid var(--border-neon);
+            border-radius: 20px;
+            width: 360px;
+            max-width: 90%;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.5);
+            transform: translateY(0);
+            transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 32px 24px;
+            position: relative;
+        }
+
+        .modal-overlay.hidden .modal-content {
+            transform: translateY(20px);
+        }
+
+        .modal-close {
+            position: absolute;
+            top: 16px;
+            right: 16px;
+            background: rgba(255, 255, 255, 0.05);
+            border: none;
+            color: var(--text-muted);
+            cursor: pointer;
+            width: 32px;
+            height: 32px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+            transition: all 0.2s ease;
+        }
+
+        .modal-close:hover {
+            color: var(--text-main);
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        .zalo-avatar {
+            width: 56px;
+            height: 56px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #00f2fe, #4facfe);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            margin-bottom: 16px;
+            box-shadow: 0 0 20px rgba(0, 242, 254, 0.3);
+            border: 3px solid var(--bg-surface);
+        }
+
         /* ═══════════ CUSTOM SCROLLBAR ═══════════ */
         ::-webkit-scrollbar { width: 5px; height: 5px; }
         ::-webkit-scrollbar-track { background: transparent; }
@@ -873,6 +949,9 @@
 
             <div class="nav-item" id="nav-chat-open" onclick="toggleChat()">
                 <i data-lucide="message-square" style="width:18px;height:18px"></i> AI Assistant
+            </div>
+            <div class="nav-item" id="nav-zalo-open" onclick="toggleZaloModal()">
+                <i data-lucide="smartphone" style="width:18px;height:18px"></i> Zalo Claw Chatbot
             </div>
         </nav>
 
@@ -1034,6 +1113,32 @@
                 <button class="chat-send" id="chat-send-btn" onclick="sendChatMessage()">
                     <i data-lucide="send" style="width:16px;height:16px"></i>
                 </button>
+            </div>
+        </div>
+
+        <!-- ═══ ZALO BOT MODAL ═══ -->
+        <div id="zalo-modal-overlay" class="modal-overlay hidden" onclick="toggleZaloModal(event)">
+            <div class="modal-content" onclick="event.stopPropagation()">
+                <button class="modal-close" onclick="toggleZaloModal()">
+                    <i data-lucide="x" style="width:16px;height:16px"></i>
+                </button>
+                
+                <div class="zalo-avatar">
+                    <i data-lucide="bot" style="width:28px;height:28px"></i>
+                </div>
+                
+                <h3 style="font-family: var(--font-display); font-size: 20px; font-weight: 700; margin-bottom: 4px;">Bot claws thon</h3>
+                <p style="color: var(--text-muted); font-size: 13px; margin-bottom: 24px;">Tài khoản OA</p>
+                
+                <div style="background: white; padding: 16px; border-radius: 16px; margin-bottom: 24px; display: inline-block;">
+                    <img src="https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=https://zalo.me/&margin=0" alt="Zalo QR Code" style="width: 200px; height: 200px; display: block; border-radius: 8px;">
+                </div>
+                
+                <p style="color: var(--text-muted); font-size: 13px; margin-bottom: 20px;">Mở Zalo bấm nút quét QR để quét quan tâm</p>
+                
+                <a href="https://zalo.me/" target="_blank" class="btn-chat-toggle" style="justify-content: center; width: 100%; text-decoration: none; padding: 12px 16px;">
+                    <i data-lucide="external-link" style="width:16px;height:16px"></i> Mở trong Zalo
+                </a>
             </div>
         </div>
     </main>
@@ -1674,6 +1779,11 @@ function toggleChat() {
     if (panel.classList.contains('open')) {
         document.getElementById('chat-input').focus();
     }
+}
+
+function toggleZaloModal(e) {
+    const modal = document.getElementById('zalo-modal-overlay');
+    modal.classList.toggle('hidden');
 }
 
 function initChatInput() {
