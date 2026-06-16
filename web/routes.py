@@ -119,9 +119,24 @@ def _is_authorized_zalo_webhook(request: Request) -> bool:
 
 async def zalo_webhook(request: Request) -> JSONResponse:
     """Handle Zalo Bot Platform webhooks, answer with the shared chat brain, then reply in Zalo."""
-    body = await request.json()
+    """print request log"""
+    print(request.method)
+    print(request.headers)
+    print(request.body)
+    if request.method == "GET":
+        return JSONResponse({"status": "ok"})
+
+    raw_body = await request.body()
+    if not raw_body.strip():
+        return JSONResponse({"status": "ok"})
+
     if not _is_authorized_zalo_webhook(request):
         return JSONResponse({"status": "error", "error": "invalid Zalo webhook secret token"}, status_code=401)
+
+    try:
+        body = json.loads(raw_body)
+    except json.JSONDecodeError:
+        return JSONResponse({"status": "error", "error": "invalid JSON body"}, status_code=400)
 
     result_data = body.get("result", {})
     event_name = result_data.get("event_name", "")
@@ -197,4 +212,4 @@ def register_web_routes(app) -> None:
     app.add_route("/chat", chat_page, methods=["GET"])
     app.add_route("/api/chat", api_chat, methods=["POST"])
     app.add_route("/api/dashboard", api_dashboard, methods=["GET"])
-    app.add_route("/webhooks/zalo", zalo_webhook, methods=["POST"])
+    app.add_route("/webhooks", zalo_webhook, methods=["GET", "POST"])
