@@ -88,9 +88,25 @@ def _send_zalo_text(chat_id: str, text: str) -> dict:
         "chat_id": chat_id,
         "text": text[:2000],
     }
+    return _post_zalo_bot_api(bot_token, "sendMessage", payload)
+
+
+def _send_zalo_typing(chat_id: str) -> dict:
+    bot_token = os.environ.get("ZALO_BOT_TOKEN", "").strip()
+    if not bot_token:
+        return {"status": "skipped", "reason": "ZALO_BOT_TOKEN is not configured"}
+
+    payload = {
+        "chat_id": chat_id,
+        "action": "typing",
+    }
+    return _post_zalo_bot_api(bot_token, "sendChatAction", payload)
+
+
+def _post_zalo_bot_api(bot_token: str, method_name: str, payload: dict) -> dict:
     data = json.dumps(payload).encode("utf-8")
     req = request.Request(
-        f"{ZALO_BOT_API_BASE_URL}/bot{bot_token}/sendMessage",
+        f"{ZALO_BOT_API_BASE_URL}/bot{bot_token}/{method_name}",
         data=data,
         headers={"Content-Type": "application/json"},
         method="POST",
@@ -114,7 +130,7 @@ def _send_zalo_text(chat_id: str, text: str) -> dict:
         return {
             "status": "error",
             "error_code": parsed.get("error_code"),
-            "description": parsed.get("description", "Zalo sendMessage failed"),
+            "description": parsed.get("description", f"Zalo {method_name} failed"),
             "body": parsed,
         }
 
@@ -188,6 +204,10 @@ async def zalo_webhook(request: Request) -> JSONResponse:
     user_id = str(zalo_message.get("from", {}).get("id", "zalo-user"))
     chat_id = str(zalo_message.get("chat", {}).get("id", user_id))
     logger.info("Zalo webhook message received: event=%s user_id=%s chat_id=%s", event_name, user_id, chat_id)
+    typing_delivery = _send_zalo_typing(chat_id)
+    if typing_delivery.get("status") != "sent":
+        logger.warning("Zalo typing signal failed: chat_id=%s delivery=%s", chat_id, typing_delivery)
+
     session_id = f"zalo-{user_id}"
     result = handle_message(str(message), channel="zalo", user_id=user_id, session_id=session_id)
     if result.get("status") == "success":
