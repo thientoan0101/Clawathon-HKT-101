@@ -246,6 +246,8 @@ async def api_dashboard(request: Request) -> JSONResponse:
             "time_of_day": p["activity"]["time_of_day_breakdown"],
             "daily_active": p["activity"]["daily_active_users"],
         },
+        "ranking": p.get("ranking", {}),
+        "insights": p.get("insights", {}),
     })
 
 

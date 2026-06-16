@@ -5,6 +5,14 @@ from __future__ import annotations
 from typing import Any
 
 
+def enrich_precomputed_data(data: dict[str, Any]) -> dict[str, Any]:
+    """Ensure precomputed executor payloads have a human-readable label."""
+    if data.get("type") != "precomputed" or data.get("label"):
+        return data
+    key = data.get("key", "Metric")
+    return {**data, "label": key.replace(".", " / ").replace("_", " ").title()}
+
+
 def _fmt_number(value: float | int) -> str:
     if isinstance(value, float) and value == int(value):
         value = int(value)
@@ -18,13 +26,22 @@ def format_reply(data: dict[str, Any]) -> str:
     if dtype == "precomputed":
         label = data.get("label", data.get("key", "Metric"))
         value = data["value"]
-        if isinstance(value, dict):
-            return f"**{label}**\n{value}"
+        key = data.get("key", "")
+        if value is None:
+            return f"No data found for **{label}**."
         if isinstance(value, list):
+            if key.startswith("ranking."):
+                return _format_ranking_list(key, value)
+            if key == "activity.time_of_day_breakdown":
+                return _format_precomputed_list(label, value)
+            if key == "trends.daily_volume":
+                return _format_daily_volume_list(label, value)
             return _format_precomputed_list(label, value)
-        if "pct" in data.get("key", "") or "ratio" in data.get("key", ""):
+        if isinstance(value, dict):
+            return _format_precomputed_dict(key, label, value)
+        if key.endswith("_pct") or "pct" in key or "ratio" in key:
             return f"{label}: {value}%"
-        if "volume" in data.get("key", "") or "tpv" in data.get("key", "") or "amount" in data.get("key", ""):
+        if any(token in key for token in ("volume", "tpv", "amount")):
             return f"{label}: {_fmt_number(value)} VND"
         return f"{label}: {_fmt_number(value)}"
 
@@ -245,6 +262,149 @@ def _format_advanced_tool(tool: str, v: dict[str, Any]) -> str:
             f"- Baseline avg/minute: **{v.get('baseline_avg_minute')}**"
         )
     return f"{tool}: {v}"
+
+
+def _format_precomputed_dict(key: str, label: str, value: dict[str, Any]) -> str:
+    if key.startswith("insights."):
+        return _format_insight(key, value)
+    if key == "breakdown.channel_and_platform":
+        return _format_channel_breakdown(label, value)
+    if key == "growth.forecasting_next_month":
+        return _format_forecast(label, value)
+    if all(isinstance(v, (int, float)) for v in value.values()):
+        return _format_scalar_map(label, key, value)
+    lines = [f"**{label}**"]
+    for sub_key, sub_val in value.items():
+        if isinstance(sub_val, dict):
+            lines.append(f"- **{sub_key}**: {_format_inline_dict(sub_val)}")
+        else:
+            lines.append(f"- **{sub_key}**: {sub_val}")
+    return "\n".join(lines)
+
+
+def _format_inline_dict(value: dict[str, Any]) -> str:
+    parts = []
+    for k, v in value.items():
+        if isinstance(v, float) and ("volume" in k or "tpv" in k or "amount" in k):
+            parts.append(f"{k}={_fmt_number(v)} VND")
+        else:
+            parts.append(f"{k}={v}")
+    return ", ".join(parts)
+
+
+def _format_scalar_map(label: str, key: str, value: dict[str, Any]) -> str:
+    use_vnd = any(token in key for token in ("volume", "tpv", "amount", "product", "app"))
+    lines = [f"**{label}**"]
+    for map_key, map_val in sorted(value.items()):
+        if use_vnd:
+            lines.append(f"- **{map_key}**: {_fmt_number(map_val)} VND")
+        else:
+            lines.append(f"- **{map_key}**: {_fmt_number(map_val)}")
+    return "\n".join(lines)
+
+
+def _format_channel_breakdown(label: str, value: dict[str, Any]) -> str:
+    lines = [f"**{label}**"]
+    note = value.get("note")
+    if note:
+        lines.append(f"_{note}_")
+    for section_key, title in (("by_app_id", "By app (channel)"), ("by_product_code", "By product (rail)")):
+        section = value.get(section_key) or {}
+        if not section:
+            continue
+        lines.append(f"\n**{title}:**")
+        for item_key, metrics in sorted(section.items()):
+            if isinstance(metrics, dict):
+                lines.append(
+                    f"- **{item_key}**: {metrics.get('txn_count', 0)} txns, "
+                    f"{_fmt_number(metrics.get('tpv', 0))} VND"
+                )
+            else:
+                lines.append(f"- **{item_key}**: {metrics}")
+    return "\n".join(lines)
+
+
+def _format_forecast(label: str, value: dict[str, Any]) -> str:
+    lines = [
+        f"**{label}**",
+        f"- Predicted TPV: **{_fmt_number(value.get('predicted_tpv', 0))}** VND",
+        f"- Predicted MAU: **{_fmt_number(value.get('predicted_mau', 0))}**",
+        f"- Confidence interval: **{_fmt_number(value.get('confidence_interval_low', 0))}** – "
+        f"**{_fmt_number(value.get('confidence_interval_high', 0))}** VND",
+        f"- Method: {value.get('method', 'n/a')}",
+    ]
+    months = value.get("based_on_months")
+    if months:
+        lines.append(f"- Based on months: {', '.join(months)}")
+    return "\n".join(lines)
+
+
+def _format_daily_volume_list(label: str, rows: list[dict[str, Any]]) -> str:
+    if not rows:
+        return f"**{label}**: no data"
+    lines = [f"**{label}**"]
+    for row in rows[-14:]:
+        lines.append(
+            f"- **{row.get('order_date')}**: {row.get('txn_count', 0)} txns, "
+            f"{_fmt_number(row.get('volume', 0))} VND"
+        )
+    if len(rows) > 14:
+        lines.append(f"_Showing last 14 of {len(rows)} days._")
+    return "\n".join(lines)
+
+
+def _format_insight(key: str, row: dict[str, Any]) -> str:
+    if "sender_id" in row and "txn_count" in row:
+        return (
+            f"The sender with the most transfers is **{row.get('sender_id')}** "
+            f"with **{_fmt_number(row.get('txn_count', 0))}** transaction(s)."
+        )
+    if "sender_id" in row and "volume" in row:
+        return (
+            f"The highest-volume sender is **{row.get('sender_id')}** "
+            f"with **{_fmt_number(row.get('volume', 0))}** VND."
+        )
+    if "peer_id" in row and "txn_count" in row:
+        return (
+            f"The recipient with the most transfers is **{row.get('peer_id')}** "
+            f"with **{_fmt_number(row.get('txn_count', 0))}** transaction(s)."
+        )
+    if "peer_id" in row and "volume" in row:
+        return (
+            f"The highest-volume recipient is **{row.get('peer_id')}** "
+            f"with **{_fmt_number(row.get('volume', 0))}** VND."
+        )
+    return str(row)
+
+
+def _format_ranking_list(key: str, items: list[dict[str, Any]]) -> str:
+    if not items:
+        return "No ranking data found."
+    if key == "ranking.top_senders_by_count":
+        title = f"**Top {len(items)} senders by transaction count:**"
+        lines = [title]
+        for i, row in enumerate(items, 1):
+            lines.append(f"{i}. **{row.get('sender_id')}** — {row.get('txn_count')} txns")
+        return "\n".join(lines)
+    if key == "ranking.top_senders_by_volume":
+        title = f"**Top {len(items)} senders by volume:**"
+        lines = [title]
+        for i, row in enumerate(items, 1):
+            lines.append(f"{i}. **{row.get('sender_id')}** — {_fmt_number(row.get('volume', 0))} VND")
+        return "\n".join(lines)
+    if key == "ranking.top_peers_by_count":
+        title = f"**Top {len(items)} recipients by transaction count:**"
+        lines = [title]
+        for i, row in enumerate(items, 1):
+            lines.append(f"{i}. **{row.get('peer_id')}** — {row.get('txn_count')} txns")
+        return "\n".join(lines)
+    if key == "ranking.top_peers_by_volume":
+        title = f"**Top {len(items)} recipients by volume:**"
+        lines = [title]
+        for i, row in enumerate(items, 1):
+            lines.append(f"{i}. **{row.get('peer_id')}** — {_fmt_number(row.get('volume', 0))} VND")
+        return "\n".join(lines)
+    return _format_precomputed_list(key, items)
 
 
 def _format_precomputed_list(label: str, rows: list[dict[str, Any]]) -> str:

@@ -169,6 +169,68 @@ PRECOMPUTED_RULES: list[dict[str, Any]] = [
         "key": "growth.user_growth_rate_pct",
         "label": "User growth rate (%)",
     },
+    {
+        "patterns": [
+            r"who\s*(sent|send)\s*the\s*most",
+            r"most\s*active\s*sender",
+            r"sender\s*with\s*the\s*most",
+            r"most\s*sender",
+            r"user\s*sender\s*most",
+            r"ai\s*gửi\s*nhiều\s*nhất",
+        ],
+        "key": "insights.top_sender_by_count",
+        "label": "Top sender by transaction count",
+    },
+    {
+        "patterns": [
+            r"highest\s*volume\s*sender",
+            r"who\s*sent\s*the\s*most\s*money",
+            r"top\s*sender\s*by\s*volume",
+        ],
+        "key": "insights.top_sender_by_volume",
+        "label": "Top sender by volume",
+    },
+    {
+        "patterns": [
+            r"who\s*received\s*the\s*most",
+            r"most\s*receiver",
+            r"recipient\s*who\s*received\s*the\s*most",
+            r"highest\s*recipient",
+            r"received\s*the\s*most\s*transfer",
+            r"ai\s*nhận\s*nhiều\s*nhất",
+        ],
+        "key": "insights.top_receiver_by_count",
+        "label": "Top receiver by transaction count",
+    },
+    {
+        "patterns": [
+            r"who\s*received\s*the\s*most\s*money",
+            r"top\s*recipient\s*by\s*volume",
+            r"highest\s*recipient\s*volume",
+        ],
+        "key": "insights.top_receiver_by_volume",
+        "label": "Top receiver by volume",
+    },
+    {
+        "patterns": [r"top\s*\d*\s*senders?\s*by\s*volume", r"top\s*sender\s*by\s*volume", r"rank\s*sender.*volume"],
+        "key": "ranking.top_senders_by_volume",
+        "label": "Top senders by volume",
+    },
+    {
+        "patterns": [r"top\s*\d*\s*senders?", r"top\s*sender", r"rank\s*sender"],
+        "key": "ranking.top_senders_by_count",
+        "label": "Top senders by transaction count",
+    },
+    {
+        "patterns": [r"top\s*\d*\s*receivers?\s*by\s*volume", r"top\s*recipient\s*by\s*volume", r"top\s*peer\s*by\s*volume"],
+        "key": "ranking.top_peers_by_volume",
+        "label": "Top recipients by volume",
+    },
+    {
+        "patterns": [r"top\s*\d*\s*receivers?", r"top\s*recipient", r"top\s*peer", r"top\s*người\s*nhận"],
+        "key": "ranking.top_peers_by_count",
+        "label": "Top recipients by transaction count",
+    },
 ]
 
 # Sender-specific util mapping — only when sender_id detected

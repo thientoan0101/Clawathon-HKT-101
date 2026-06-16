@@ -8,7 +8,8 @@ from typing import Any
 
 from agent.action_executor import execute_decision
 from agent.brain import create_analytics_agent
-from agent.formatter import format_reply
+from agent.formatter import enrich_precomputed_data, format_reply
+from agent.function_registry import get_function_by_id
 from agent.llm_config import llm_config_status
 from agent.llm_router import (
     classify_with_llm,
@@ -36,6 +37,30 @@ def _llm_configured() -> bool:
     return all(llm_config_status().values())
 
 
+def _reply_from_data(message: str, data: dict[str, Any]) -> str:
+    """Format executor output; precomputed stats skip LLM composition."""
+    if data.get("type") == "precomputed":
+        return format_reply(enrich_precomputed_data(data))
+    try:
+        reply = compose_answer_with_llm(message, data)
+        print(reply)
+        if reply.strip():
+            return reply
+        logger.warning("LLM formatting returned empty reply, using template")
+    except Exception as exc:
+        logger.warning("LLM formatting failed, using template: %s", exc)
+    return format_reply(data)
+
+
+def _label_for_precomputed(stat_key: str | None) -> str | None:
+    if not stat_key:
+        return None
+    fn = get_function_by_id(stat_key)
+    if fn:
+        return fn.get("description", stat_key)
+    return stat_key
+
+
 def _try_keyword_route(message: str) -> dict[str, Any] | None:
     """Offline fallback when LLM is unavailable, or fast path for known metrics."""
     store = get_store()
@@ -43,6 +68,8 @@ def _try_keyword_route(message: str) -> dict[str, Any] | None:
     if route.kind == RouteKind.LLM or route.confidence < KEYWORD_CONFIDENCE_THRESHOLD:
         return None
     data = execute_route(store, route)
+    if data.get("type") == "precomputed":
+        data = enrich_precomputed_data(data)
     return {
         "status": "success",
         "reply": format_reply(data),
@@ -60,8 +87,7 @@ def _try_keyword_decision_route(store, message: str, channel: str, session_id: s
     try:
         data = execute_decision(store, intent)
         if intent.action == "precomputed":
-            route = classify_query(message)
-            data["label"] = route.label
+            data["label"] = _label_for_precomputed(intent.stat_key) or classify_query(message).label
         return _wrap(
             {
                 "status": "success",
@@ -133,7 +159,7 @@ def handle_message(
     user_id: str | None = None,
     session_id: str | None = None,
 ) -> dict[str, Any]:
-    """LLM classifies intent → execute action → LLM formats answer."""
+    """LLM classifies intent → execute action → format reply (precomputed uses template only)."""
     message = message.strip()
     if not message:
         return {"status": "error", "error": "message is required"}
@@ -152,6 +178,7 @@ def handle_message(
     if _llm_configured():
         try:
             decision = classify_with_llm(message)
+            print(decision)
 
             if decision.action == "clarify":
                 return _wrap(
@@ -170,21 +197,16 @@ def handle_message(
                 result["reasoning"] = decision.reasoning
                 return _wrap(result, channel, session_id)
 
-            # Execute chosen action deterministically (no invented numbers)
             data = execute_decision(store, decision)
-            try:
-                reply = compose_answer_with_llm(message, data)
-                if not reply.strip():
-                    logger.warning("LLM formatting returned empty reply, using template")
-                    reply = format_reply(data)
-            except Exception as exc:
-                logger.warning("LLM formatting failed, using template: %s", exc)
-                reply = format_reply(data)
+            print(data)
+            
+            if decision.action == "precomputed":
+                data["label"] = _label_for_precomputed(decision.stat_key)
 
             return _wrap(
                 {
                     "status": "success",
-                    "reply": reply,
+                    "reply": _reply_from_data(message, data),
                     "route": f"llm_{decision.action}",
                     "action": decision.action,
                     "tool_name": decision.tool_name,

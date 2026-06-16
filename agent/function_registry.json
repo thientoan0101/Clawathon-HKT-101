@@ -362,47 +362,102 @@
       "returns": "integer sender_count"
     },
     {
-      "id": "get_top_senders_by_count",
-      "action": "tool",
+      "id": "ranking.top_senders_by_count",
+      "action": "precomputed",
       "category": "ranking",
-      "description": "Top senders ranked by transaction count.",
-      "parameters": [{"name": "limit", "type": "integer", "required": false, "description": "Number of results, default 10"}],
-      "examples": ["top 10 senders by transaction count"],
-      "keywords_en": ["top sender", "rank sender"],
+      "description": "Top senders ranked by transaction count (precomputed top 20).",
+      "parameters": [],
+      "examples": ["top 10 senders by transaction count", "top senders by count"],
+      "keywords_en": ["top sender", "rank sender", "top senders"],
       "keywords_vi": ["top người gửi"],
       "returns": "list of {sender_id, txn_count}"
     },
     {
-      "id": "get_top_senders_by_volume",
-      "action": "tool",
+      "id": "ranking.top_senders_by_volume",
+      "action": "precomputed",
       "category": "ranking",
-      "description": "Top senders ranked by total transfer volume.",
-      "parameters": [{"name": "limit", "type": "integer", "required": false, "description": "Number of results, default 10"}],
+      "description": "Top senders ranked by total transfer volume (precomputed top 20).",
+      "parameters": [],
       "examples": ["top 10 senders by volume"],
       "keywords_en": ["top sender by volume"],
       "keywords_vi": ["top volume"],
       "returns": "list of {sender_id, volume}"
     },
     {
-      "id": "get_top_peers_by_count",
-      "action": "tool",
+      "id": "ranking.top_peers_by_count",
+      "action": "precomputed",
       "category": "ranking",
-      "description": "Top recipients (peer_id) ranked by transaction count.",
-      "parameters": [{"name": "limit", "type": "integer", "required": false, "description": "Number of results, default 10"}],
-      "examples": [
-        "the recipient who received the most transfer",
-        "top 10 receivers by count",
-        "who received the most transactions"
-      ],
-      "keywords_en": [
-        "top peer",
-        "top recipient",
-        "most transfer",
-        "received the most",
-        "highest recipient"
-      ],
+      "description": "Top recipients (peer_id) ranked by transaction count (precomputed top 20).",
+      "parameters": [],
+      "examples": ["top 10 receivers by count"],
+      "keywords_en": ["top peer", "top recipient", "top receivers"],
       "keywords_vi": ["top người nhận"],
       "returns": "list of {peer_id, txn_count}"
+    },
+    {
+      "id": "ranking.top_peers_by_volume",
+      "action": "precomputed",
+      "category": "ranking",
+      "description": "Top recipients ranked by total volume received (precomputed top 20).",
+      "parameters": [],
+      "examples": ["top 10 receivers by volume", "top recipients by volume"],
+      "keywords_en": ["top recipient by volume", "top peer by volume"],
+      "keywords_vi": ["top volume người nhận"],
+      "returns": "list of {peer_id, volume}"
+    },
+    {
+      "id": "insights.top_sender_by_count",
+      "action": "precomputed",
+      "category": "insights",
+      "description": "The single sender with the most transactions (all-time).",
+      "parameters": [],
+      "examples": ["who sent the most", "user sender most", "most active sender"],
+      "keywords_en": ["most sender", "who sent the most", "sender with most"],
+      "keywords_vi": ["người gửi nhiều nhất", "ai gửi nhiều nhất"],
+      "returns": "object {sender_id, txn_count}"
+    },
+    {
+      "id": "insights.top_sender_by_volume",
+      "action": "precomputed",
+      "category": "insights",
+      "description": "The single sender with the highest total transfer volume (all-time).",
+      "parameters": [],
+      "examples": ["highest volume sender", "who sent the most money"],
+      "keywords_en": ["highest volume sender", "top sender volume"],
+      "keywords_vi": ["người gửi volume cao nhất"],
+      "returns": "object {sender_id, volume}"
+    },
+    {
+      "id": "insights.top_receiver_by_count",
+      "action": "precomputed",
+      "category": "insights",
+      "description": "The single recipient with the most transactions received (all-time).",
+      "parameters": [],
+      "examples": [
+        "the recipient who received the most transfer",
+        "who received the most transactions",
+        "most receiver"
+      ],
+      "keywords_en": [
+        "most transfer",
+        "received the most",
+        "highest recipient",
+        "most receiver",
+        "who received the most"
+      ],
+      "keywords_vi": ["người nhận nhiều nhất", "ai nhận nhiều nhất"],
+      "returns": "object {peer_id, txn_count}"
+    },
+    {
+      "id": "insights.top_receiver_by_volume",
+      "action": "precomputed",
+      "category": "insights",
+      "description": "The single recipient with the highest total volume received (all-time).",
+      "parameters": [],
+      "examples": ["top recipient by volume", "who received the most money"],
+      "keywords_en": ["most received volume", "highest recipient volume"],
+      "keywords_vi": ["người nhận volume cao nhất"],
+      "returns": "object {peer_id, volume}"
     },
     {
       "id": "list_transactions_in_last_days",

@@ -200,6 +200,41 @@ def _time_of_day_breakdown(df: pd.DataFrame) -> list[dict[str, Any]]:
     return results
 
 
+_RANKING_LIMIT = 20
+
+
+def _top_senders_by_count(df: pd.DataFrame, limit: int = _RANKING_LIMIT) -> list[dict[str, Any]]:
+    if df.empty:
+        return []
+    top = df.groupby("sender_id").size().sort_values(ascending=False).head(limit)
+    return [{"sender_id": str(k), "txn_count": int(v)} for k, v in top.items()]
+
+
+def _top_senders_by_volume(df: pd.DataFrame, limit: int = _RANKING_LIMIT) -> list[dict[str, Any]]:
+    if df.empty:
+        return []
+    top = df.groupby("sender_id")["amount"].sum().sort_values(ascending=False).head(limit)
+    return [{"sender_id": str(k), "volume": round(float(v), 2)} for k, v in top.items()]
+
+
+def _top_peers_by_count(df: pd.DataFrame, limit: int = _RANKING_LIMIT) -> list[dict[str, Any]]:
+    if df.empty:
+        return []
+    top = df.groupby("peer_id").size().sort_values(ascending=False).head(limit)
+    return [{"peer_id": str(k), "txn_count": int(v)} for k, v in top.items()]
+
+
+def _top_peers_by_volume(df: pd.DataFrame, limit: int = _RANKING_LIMIT) -> list[dict[str, Any]]:
+    if df.empty:
+        return []
+    top = df.groupby("peer_id")["amount"].sum().sort_values(ascending=False).head(limit)
+    return [{"peer_id": str(k), "volume": round(float(v), 2)} for k, v in top.items()]
+
+
+def _top_insight(rows: list[dict[str, Any]]) -> dict[str, Any] | None:
+    return rows[0] if rows else None
+
+
 def precompute_all(df: pd.DataFrame) -> dict[str, Any]:
     """Build the full pre-computed statistics manifest."""
     total_txn = len(df)
@@ -227,6 +262,11 @@ def precompute_all(df: pd.DataFrame) -> dict[str, Any]:
         .reset_index()
     )
     daily_trend["order_date"] = daily_trend["order_date"].astype(str)
+
+    top_senders_by_count = _top_senders_by_count(df)
+    top_senders_by_volume = _top_senders_by_volume(df)
+    top_peers_by_count = _top_peers_by_count(df)
+    top_peers_by_volume = _top_peers_by_volume(df)
 
     return {
         "global": {
@@ -293,6 +333,18 @@ def precompute_all(df: pd.DataFrame) -> dict[str, Any]:
         },
         "breakdown": {
             "channel_and_platform": _channel_and_platform_breakdown(df),
+        },
+        "ranking": {
+            "top_senders_by_count": top_senders_by_count,
+            "top_senders_by_volume": top_senders_by_volume,
+            "top_peers_by_count": top_peers_by_count,
+            "top_peers_by_volume": top_peers_by_volume,
+        },
+        "insights": {
+            "top_sender_by_count": _top_insight(top_senders_by_count),
+            "top_sender_by_volume": _top_insight(top_senders_by_volume),
+            "top_receiver_by_count": _top_insight(top_peers_by_count),
+            "top_receiver_by_volume": _top_insight(top_peers_by_volume),
         },
         "meta": {
             "date_range_start": str(df["order_date"].min()) if total_txn else None,

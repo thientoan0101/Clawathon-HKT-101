@@ -162,26 +162,26 @@ def build_tools(store: DataStore) -> list:
     @tool
     def get_top_senders_by_count(limit: int = 10) -> str:
         """Top senders ranked by transaction count."""
-        top = store.df.groupby("sender_id").size().sort_values(ascending=False).head(limit)
-        return _json([{"sender_id": k, "txn_count": int(v)} for k, v in top.items()])
+        rows = _lookup(store, "ranking.top_senders_by_count")
+        return _json(rows[:limit] if isinstance(rows, list) else [])
 
     @tool
     def get_top_senders_by_volume(limit: int = 10) -> str:
         """Top senders ranked by total transfer volume."""
-        top = store.df.groupby("sender_id")["amount"].sum().sort_values(ascending=False).head(limit)
-        return _json([{"sender_id": k, "volume": round(float(v), 2)} for k, v in top.items()])
+        rows = _lookup(store, "ranking.top_senders_by_volume")
+        return _json(rows[:limit] if isinstance(rows, list) else [])
 
     @tool
     def get_top_peers_by_count(limit: int = 10) -> str:
         """Top recipients (peer_id) ranked by transaction count."""
-        top = store.df.groupby("peer_id").size().sort_values(ascending=False).head(limit)
-        return _json([{"peer_id": k, "txn_count": int(v)} for k, v in top.items()])
+        rows = _lookup(store, "ranking.top_peers_by_count")
+        return _json(rows[:limit] if isinstance(rows, list) else [])
 
     @tool
     def get_top_peers_by_volume(limit: int = 10) -> str:
         """Top recipients ranked by total volume received."""
-        top = store.df.groupby("peer_id")["amount"].sum().sort_values(ascending=False).head(limit)
-        return _json([{"peer_id": k, "volume": round(float(v), 2)} for k, v in top.items()])
+        rows = _lookup(store, "ranking.top_peers_by_volume")
+        return _json(rows[:limit] if isinstance(rows, list) else [])
 
     @tool
     def get_dau_for_date(target_date: str) -> str:
