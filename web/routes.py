@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hmac
 import json
+import logging
 import os
 import uuid
 from pathlib import Path
@@ -18,6 +19,7 @@ from analytics.store import get_store
 
 TEMPLATES_DIR = Path(__file__).parent / "templates"
 env = Environment(loader=FileSystemLoader(str(TEMPLATES_DIR)), autoescape=select_autoescape(["html"]))
+logger = logging.getLogger(__name__)
 ZALO_BOT_API_BASE_URL = "https://bot-api.zaloplatforms.com"
 ZALO_SECRET_TOKEN_HEADER = "x-bot-api-secret-token"
 
@@ -79,6 +81,8 @@ def _send_zalo_text(chat_id: str, text: str) -> dict:
     bot_token = os.environ.get("ZALO_BOT_TOKEN", "").strip()
     if not bot_token:
         return {"status": "skipped", "reason": "ZALO_BOT_TOKEN is not configured"}
+    if not text.strip():
+        return {"status": "skipped", "reason": "reply text is empty"}
 
     payload = {
         "chat_id": chat_id,
@@ -105,6 +109,15 @@ def _send_zalo_text(chat_id: str, text: str) -> dict:
         parsed = json.loads(response_body)
     except json.JSONDecodeError:
         parsed = {"raw": response_body}
+
+    if parsed.get("ok") is False:
+        return {
+            "status": "error",
+            "error_code": parsed.get("error_code"),
+            "description": parsed.get("description", "Zalo sendMessage failed"),
+            "body": parsed,
+        }
+
     return {"status": "sent", "body": parsed}
 
 
@@ -117,44 +130,74 @@ def _is_authorized_zalo_webhook(request: Request) -> bool:
     return bool(actual_token) and hmac.compare_digest(actual_token, expected_token)
 
 
+def _normalize_zalo_message(body: dict) -> tuple[str, dict, str]:
+    result_data = body.get("result") if isinstance(body.get("result"), dict) else {}
+    event_name = str(result_data.get("event_name") or body.get("event_name") or "")
+
+    zalo_message = result_data.get("message")
+    if not isinstance(zalo_message, dict):
+        zalo_message = body.get("message")
+    if not isinstance(zalo_message, dict):
+        zalo_message = {}
+
+    message_text = str(
+        zalo_message.get("text")
+        or body.get("text")
+        or body.get("message_text")
+        or ""
+    ).strip()
+
+    return message_text, zalo_message, event_name
+
+
 async def zalo_webhook(request: Request) -> JSONResponse:
     """Handle Zalo Bot Platform webhooks, answer with the shared chat brain, then reply in Zalo."""
-    """print request log"""
-    print(request.method)
-    print(request.headers)
-    print(request.body)
+    logger.info("Zalo webhook request received: method=%s path=%s", request.method, request.url.path)
     if request.method == "GET":
         return JSONResponse({"status": "ok"})
 
     raw_body = await request.body()
     if not raw_body.strip():
+        logger.info("Zalo webhook ignored: empty body")
         return JSONResponse({"status": "ok"})
 
     if not _is_authorized_zalo_webhook(request):
+        logger.warning("Zalo webhook rejected: invalid secret token")
         return JSONResponse({"status": "error", "error": "invalid Zalo webhook secret token"}, status_code=401)
 
     try:
         body = json.loads(raw_body)
     except json.JSONDecodeError:
+        logger.warning("Zalo webhook rejected: invalid JSON body")
         return JSONResponse({"status": "error", "error": "invalid JSON body"}, status_code=400)
 
-    result_data = body.get("result", {})
-    event_name = result_data.get("event_name", "")
-    zalo_message = result_data.get("message", {})
-    message = zalo_message.get("text", "")
+    result_keys = list(body.get("result", {}).keys()) if isinstance(body.get("result"), dict) else []
+    logger.info("Zalo webhook payload shape: keys=%s result_keys=%s", list(body.keys()), result_keys)
+
+    message, zalo_message, event_name = _normalize_zalo_message(body)
     if not message:
+        logger.info("Zalo webhook ignored: no text message event=%s", event_name)
         return JSONResponse({
             "status": "ignored",
             "reason": "no message text",
             "event_name": event_name,
+            "payload_keys": list(body.keys()),
+            "result_keys": result_keys,
         })
 
     user_id = str(zalo_message.get("from", {}).get("id", "zalo-user"))
     chat_id = str(zalo_message.get("chat", {}).get("id", user_id))
+    logger.info("Zalo webhook message received: event=%s user_id=%s chat_id=%s", event_name, user_id, chat_id)
     session_id = f"zalo-{user_id}"
     result = handle_message(str(message), channel="zalo", user_id=user_id, session_id=session_id)
     if result.get("status") == "success":
-        result["zalo_delivery"] = _send_zalo_text(chat_id, result.get("reply", ""))
+        reply = result.get("reply", "").strip() or "I received your message, but could not generate a reply."
+        result["reply"] = reply
+        result["zalo_delivery"] = _send_zalo_text(chat_id, reply)
+        if result["zalo_delivery"].get("status") == "sent":
+            logger.info("Zalo reply sent: chat_id=%s", chat_id)
+        else:
+            logger.warning("Zalo reply failed: chat_id=%s delivery=%s", chat_id, result["zalo_delivery"])
     return JSONResponse(result)
 
 

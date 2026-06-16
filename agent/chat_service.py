@@ -174,6 +174,9 @@ def handle_message(
             data = execute_decision(store, decision)
             try:
                 reply = compose_answer_with_llm(message, data)
+                if not reply.strip():
+                    logger.warning("LLM formatting returned empty reply, using template")
+                    reply = format_reply(data)
             except Exception as exc:
                 logger.warning("LLM formatting failed, using template: %s", exc)
                 reply = format_reply(data)
