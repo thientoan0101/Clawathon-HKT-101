@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hmac
 import json
 import os
 import uuid
@@ -17,7 +18,8 @@ from analytics.store import get_store
 
 TEMPLATES_DIR = Path(__file__).parent / "templates"
 env = Environment(loader=FileSystemLoader(str(TEMPLATES_DIR)), autoescape=select_autoescape(["html"]))
-ZALO_SEND_MESSAGE_URL = "https://openapi.zalo.me/v3.0/oa/message/cs"
+ZALO_BOT_API_BASE_URL = "https://bot-api.zaloplatforms.com"
+ZALO_SECRET_TOKEN_HEADER = "x-bot-api-secret-token"
 
 
 def _dashboard_context() -> dict:
@@ -73,23 +75,20 @@ async def api_chat(request: Request) -> JSONResponse:
     return JSONResponse(result)
 
 
-def _send_zalo_text(user_id: str, text: str) -> dict:
-    token = os.environ.get("ZALO_OA_ACCESS_TOKEN", "").strip()
-    if not token:
-        return {"status": "skipped", "reason": "ZALO_OA_ACCESS_TOKEN is not configured"}
+def _send_zalo_text(chat_id: str, text: str) -> dict:
+    bot_token = os.environ.get("ZALO_BOT_TOKEN", "").strip()
+    if not bot_token:
+        return {"status": "skipped", "reason": "ZALO_BOT_TOKEN is not configured"}
 
     payload = {
-        "recipient": {"user_id": user_id},
-        "message": {"text": text[:2000]},
+        "chat_id": chat_id,
+        "text": text[:2000],
     }
     data = json.dumps(payload).encode("utf-8")
     req = request.Request(
-        ZALO_SEND_MESSAGE_URL,
+        f"{ZALO_BOT_API_BASE_URL}/bot{bot_token}/sendMessage",
         data=data,
-        headers={
-            "Content-Type": "application/json",
-            "access_token": token,
-        },
+        headers={"Content-Type": "application/json"},
         method="POST",
     )
 
@@ -109,23 +108,38 @@ def _send_zalo_text(user_id: str, text: str) -> dict:
     return {"status": "sent", "body": parsed}
 
 
-async def zalo_webhook(request: Request) -> JSONResponse:
-    """Normalize Zalo OA webhook payload, answer with the shared chat brain, then reply in Zalo."""
-    body = await request.json()
-    # Zalo payload shapes vary; extract message text from common fields
-    message = (
-        body.get("message", {}).get("text", "")
-        if isinstance(body.get("message"), dict)
-        else body.get("text", body.get("message", ""))
-    )
-    if not message:
-        return JSONResponse({"status": "ignored", "reason": "no message text"})
+def _is_authorized_zalo_webhook(request: Request) -> bool:
+    expected_token = os.environ.get("ZALO_WEBHOOK_SECRET_TOKEN", "").strip()
+    if not expected_token:
+        return True
 
-    user_id = str(body.get("sender", {}).get("id", body.get("user_id", "zalo-user")))
+    actual_token = request.headers.get(ZALO_SECRET_TOKEN_HEADER, "").strip()
+    return bool(actual_token) and hmac.compare_digest(actual_token, expected_token)
+
+
+async def zalo_webhook(request: Request) -> JSONResponse:
+    """Handle Zalo Bot Platform webhooks, answer with the shared chat brain, then reply in Zalo."""
+    body = await request.json()
+    if not _is_authorized_zalo_webhook(request):
+        return JSONResponse({"status": "error", "error": "invalid Zalo webhook secret token"}, status_code=401)
+
+    result_data = body.get("result", {})
+    event_name = result_data.get("event_name", "")
+    zalo_message = result_data.get("message", {})
+    message = zalo_message.get("text", "")
+    if not message:
+        return JSONResponse({
+            "status": "ignored",
+            "reason": "no message text",
+            "event_name": event_name,
+        })
+
+    user_id = str(zalo_message.get("from", {}).get("id", "zalo-user"))
+    chat_id = str(zalo_message.get("chat", {}).get("id", user_id))
     session_id = f"zalo-{user_id}"
     result = handle_message(str(message), channel="zalo", user_id=user_id, session_id=session_id)
     if result.get("status") == "success":
-        result["zalo_delivery"] = _send_zalo_text(user_id, result.get("reply", ""))
+        result["zalo_delivery"] = _send_zalo_text(chat_id, result.get("reply", ""))
     return JSONResponse(result)
 
 
