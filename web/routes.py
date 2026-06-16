@@ -3,8 +3,10 @@
 from __future__ import annotations
 
 import json
+import os
 import uuid
 from pathlib import Path
+from urllib import error, request
 
 from jinja2 import Environment, FileSystemLoader, select_autoescape
 from starlette.requests import Request
@@ -15,6 +17,7 @@ from analytics.store import get_store
 
 TEMPLATES_DIR = Path(__file__).parent / "templates"
 env = Environment(loader=FileSystemLoader(str(TEMPLATES_DIR)), autoescape=select_autoescape(["html"]))
+ZALO_SEND_MESSAGE_URL = "https://openapi.zalo.me/v3.0/oa/message/cs"
 
 
 def _dashboard_context() -> dict:
@@ -70,8 +73,44 @@ async def api_chat(request: Request) -> JSONResponse:
     return JSONResponse(result)
 
 
+def _send_zalo_text(user_id: str, text: str) -> dict:
+    token = os.environ.get("ZALO_OA_ACCESS_TOKEN", "").strip()
+    if not token:
+        return {"status": "skipped", "reason": "ZALO_OA_ACCESS_TOKEN is not configured"}
+
+    payload = {
+        "recipient": {"user_id": user_id},
+        "message": {"text": text[:2000]},
+    }
+    data = json.dumps(payload).encode("utf-8")
+    req = request.Request(
+        ZALO_SEND_MESSAGE_URL,
+        data=data,
+        headers={
+            "Content-Type": "application/json",
+            "access_token": token,
+        },
+        method="POST",
+    )
+
+    try:
+        with request.urlopen(req, timeout=10) as resp:
+            response_body = resp.read().decode("utf-8")
+    except error.HTTPError as exc:
+        response_body = exc.read().decode("utf-8")
+        return {"status": "error", "http_status": exc.code, "body": response_body}
+    except error.URLError as exc:
+        return {"status": "error", "error": str(exc.reason)}
+
+    try:
+        parsed = json.loads(response_body)
+    except json.JSONDecodeError:
+        parsed = {"raw": response_body}
+    return {"status": "sent", "body": parsed}
+
+
 async def zalo_webhook(request: Request) -> JSONResponse:
-    """Normalize Zalo OA webhook payload → unified chat handler."""
+    """Normalize Zalo OA webhook payload, answer with the shared chat brain, then reply in Zalo."""
     body = await request.json()
     # Zalo payload shapes vary; extract message text from common fields
     message = (
@@ -85,6 +124,8 @@ async def zalo_webhook(request: Request) -> JSONResponse:
     user_id = str(body.get("sender", {}).get("id", body.get("user_id", "zalo-user")))
     session_id = f"zalo-{user_id}"
     result = handle_message(str(message), channel="zalo", user_id=user_id, session_id=session_id)
+    if result.get("status") == "success":
+        result["zalo_delivery"] = _send_zalo_text(user_id, result.get("reply", ""))
     return JSONResponse(result)
 
 
