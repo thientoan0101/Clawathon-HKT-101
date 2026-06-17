@@ -48,7 +48,7 @@ def _get_router_llm() -> ChatOpenAI:
     if _llm_router is None:
         model, base_url, api_key = get_llm_settings()
         _llm_router = ChatOpenAI(
-            model=model, base_url=base_url, api_key=api_key, temperature=0, max_tokens=512
+            model=model, base_url=base_url, api_key=api_key, temperature=0, max_tokens=1024
         )
     return _llm_router
 
@@ -69,11 +69,28 @@ def _extract_json_from_text(text: str) -> dict[str, Any]:
         raise
 
 
+def _message_content_text(response: Any) -> str:
+    content = response.content if hasattr(response, "content") else response
+    if isinstance(content, str):
+        return content.strip()
+    if isinstance(content, list):
+        parts: list[str] = []
+        for item in content:
+            if isinstance(item, str):
+                parts.append(item)
+            elif isinstance(item, dict):
+                parts.append(str(item.get("text") or item.get("content") or ""))
+        return "\n".join(part for part in parts if part).strip()
+    return str(content or "").strip()
+
+
 def _parse_decision_fallback(raw: str) -> ActionDecision:
     """Parse LLM text when structured output is unavailable."""
     text = (raw or "").strip()
     try:
-        return ActionDecision.model_validate(_extract_json_from_text(text))
+        data = _extract_json_from_text(text)
+        data.setdefault("reasoning", "llm json response")
+        return ActionDecision.model_validate(data)
     except (json.JSONDecodeError, ValueError):
         pass
     if text.lower().startswith("clarify"):
@@ -135,7 +152,8 @@ def classify_with_llm(message: str) -> ActionDecision:
     system = build_router_prompt()
     catalog_hint = (
         "Read the full function catalog in the system message. "
-        "Pick the single best function id and return ActionDecision JSON."
+        "Pick the single best function id and return compact ActionDecision JSON only. "
+        "Keep clarifying_question and reasoning short."
     )
     messages = [
         SystemMessage(content=system),
@@ -144,7 +162,7 @@ def classify_with_llm(message: str) -> ActionDecision:
 
     try:
         response = llm.invoke(messages)
-        raw = response.content if hasattr(response, "content") else str(response)
+        raw = _message_content_text(response)
         decision = _parse_decision_fallback(raw)
     except Exception as exc:
         logger.warning("LLM routing failed, trying structured output: %s", exc)
@@ -226,4 +244,4 @@ Analytics result (use these exact numbers, do not change or invent values):
 
 Write a concise, friendly answer in the same language as the user. Include the key numbers."""
     response = llm.invoke([HumanMessage(content=prompt)])
-    return response.content if hasattr(response, "content") else str(response)
+    return _message_content_text(response)

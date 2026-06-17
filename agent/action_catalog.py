@@ -47,7 +47,7 @@ Rules:
 - Global metric, no user id → precomputed + stat_key=id.
 - Specific sender_id (10-20 digits) → sender_tool + tool_name + sender_id.
 - List sender ids with >N receivers → list_senders_with_more_than_receivers, parameters={{"more_than":N}}.
-- Top/most recipient or sender → get_top_peers_by_count or get_top_senders_by_count.
+- Top/most sender or receiver → precomputed stat_key: insights.* for single most (e.g. insights.top_sender_by_count, insights.top_receiver_by_count); ranking.* for top-N lists (e.g. ranking.top_senders_by_count).
 - List/show transactions in last N days or N days ago → list_transactions_in_last_days, parameters={{"days":N,"single_day":false}} for rolling window; single_day=true for one calendar day N days before latest txn.
 - Morning vs night / time of day → activity.time_of_day_breakdown (precomputed).
 - Hourly bucket blocks → activity.custom_hourly_buckets with bucket_size_hours (1/2/3/4/6/12).
